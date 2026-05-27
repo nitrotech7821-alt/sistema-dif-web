@@ -1,4 +1,2 @@
 streamlit
 openpyxl
-gspread
-oauth2client
