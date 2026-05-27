@@ -1,10 +1,12 @@
 import streamlit as st
+import imaplib
+import email
 import openpyxl
 import io
 import zipfile
-import os
+import xml.etree.ElementTree as ET
 
-st.title("🤖 Generador de Expedientes DIF")
+st.title("🤖 Robot Administrativo DIF")
 
 # Función para manejar celdas combinadas
 def escribir_en_celda(ws, celda, valor):
@@ -14,44 +16,63 @@ def escribir_en_celda(ws, celda, valor):
             break
     ws[celda] = valor
 
-if st.button("GENERAR EXPEDIENTE COMPLETO"):
+def extraer_datos_xml(xml_bytes):
     try:
-        # 1. Definir nombres (simulando los datos que extraerás del XML)
-        folio = "1721"
-        # Aquí iría el contenido real de tu XML (puedes subirlo o extraerlo del correo)
-        contenido_xml = b"<?xml version='1.0'?><factura>Contenido del XML</factura>" 
+        root = ET.fromstring(xml_bytes)
+        # Ajusta el namespace según tu XML (usualmente cfdi:v4.0)
+        ns = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
+        folio = root.find('.//cfdi:Comprobante', ns).get('Folio', 'SN')
+        return folio
+    except:
+        return "ERROR_FOLIO"
+
+if st.button("🚀 PROCESAR FACTURAS DEL CORREO"):
+    try:
+        # 1. Conexión
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(st.secrets["EMAIL_USER"], st.secrets["EMAIL_PASS"])
+        mail.select("inbox")
         
-        # 2. Procesar Excel
-        wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
-        ws_cot = wb_cot.active
-        escribir_en_celda(ws_cot, 'H2', folio)
+        # 2. Buscar correos
+        _, mensajes = mail.search(None, 'UNSEEN') # Busca correos no leídos
         
-        wb_req = openpyxl.load_workbook("requisicion.xlsx")
-        ws_req = wb_req.active
-        escribir_en_celda(ws_req, 'I7', folio)
-        
-        # 3. Guardar en memoria
-        buf_cot = io.BytesIO()
-        wb_cot.save(buf_cot)
-        buf_req = io.BytesIO()
-        wb_req.save(buf_req)
-        
-        # 4. Empaquetar todo en el ZIP
-        zip_buf = io.BytesIO()
-        with zipfile.ZipFile(zip_buf, 'w') as zf:
-            # Aquí metemos el XML y los dos Excel
-            zf.writestr(f"Factura_{folio}.xml", contenido_xml)
-            zf.writestr(f"Cotizacion_{folio}.xlsx", buf_cot.getvalue())
-            zf.writestr(f"Requisicion_{folio}.xlsx", buf_req.getvalue())
-        
-        # 5. Descarga
-        st.download_button(
-            label="📥 DESCARGAR EXPEDIENTE COMPLETO (ZIP)",
-            data=zip_buf.getvalue(),
-            file_name=f"Expediente_{folio}.zip",
-            mime="application/zip"
-        )
-        st.success("¡Expediente listo! Contiene: XML, Cotización y Requisición.")
+        for num in mensajes[0].split():
+            _, data = mail.fetch(num, "(RFC822)")
+            msg = email.message_from_bytes(data[0][1])
             
+            for part in msg.walk():
+                if part.get_filename() and part.get_filename().endswith(".xml"):
+                    xml_data = part.get_payload(decode=True)
+                    folio = extraer_datos_xml(xml_data)
+                    
+                    # 3. Procesar archivos
+                    wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
+                    escribir_en_celda(wb_cot.active, 'H2', folio)
+                    
+                    wb_req = openpyxl.load_workbook("requisicion.xlsx")
+                    escribir_en_celda(wb_req.active, 'I7', folio)
+                    
+                    # 4. Crear ZIP en memoria
+                    zip_buf = io.BytesIO()
+                    with zipfile.ZipFile(zip_buf, 'w') as zf:
+                        zf.writestr(f"Factura_{folio}.xml", xml_data)
+                        
+                        buf_cot = io.BytesIO()
+                        wb_cot.save(buf_cot)
+                        zf.writestr(f"Cotizacion_{folio}.xlsx", buf_cot.getvalue())
+                        
+                        buf_req = io.BytesIO()
+                        wb_req.save(buf_req)
+                        zf.writestr(f"Requisicion_{folio}.xlsx", buf_req.getvalue())
+                    
+                    # 5. Botón de descarga individual
+                    st.download_button(
+                        label=f"📥 Descargar Expediente: {folio}",
+                        data=zip_buf.getvalue(),
+                        file_name=f"Expediente_{folio}.zip",
+                        mime="application/zip"
+                    )
+        mail.logout()
+        st.success("Proceso terminado. Revisa los botones de descarga arriba.")
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error al conectar con correo: {e}")
