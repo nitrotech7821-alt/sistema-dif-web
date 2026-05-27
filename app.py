@@ -6,7 +6,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURACIÓN ---
-# Estos datos ahora se leen desde la sección Secrets de tu app
+# Asegúrate de tener EMAIL, PASSWORD y el diccionario 'gcp' en tus Secrets
 EMAIL_USER = st.secrets["EMAIL"]
 EMAIL_PASS = st.secrets["PASSWORD"]
 
@@ -14,7 +14,7 @@ EMAIL_PASS = st.secrets["PASSWORD"]
 def guardar_en_sheets(datos):
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     
-    # Ahora leemos el diccionario [gcp] directamente desde los Secrets
+    # Leemos las credenciales directamente del diccionario 'gcp' en Secrets
     creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp"], scope)
     client = gspread.authorize(creds)
     
@@ -22,15 +22,13 @@ def guardar_en_sheets(datos):
     hoja = client.open_by_key('1rwUk0h9Yx8BA8jmVHHHtS6Etj7HqOfHsSzHrpVanqro')
     worksheet = hoja.sheet1
     
-    # Agrega una nueva fila al final de la hoja
+    # Anexar datos a la hoja
     worksheet.append_row([datos['RFC'], datos['Nombre'], datos['Total']])
 
 # --- PROCESAMIENTO XML ---
 def procesar_xml(xml_content):
     root = ET.fromstring(xml_content)
-    # Namespace para CFDI 4.0
     ns = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
-    
     emisor = root.find('.//cfdi:Emisor', ns)
     comprobante = root.find('.//cfdi:Comprobante', ns)
     
@@ -50,13 +48,11 @@ if st.button("📥 Procesar Facturas y Enviar a Hoja de Cálculo"):
         mail.login(EMAIL_USER, EMAIL_PASS)
         mail.select("inbox")
         
-        # Buscar todos los correos
+        # Búsqueda
         status, messages = mail.search(None, 'ALL')
         for num in messages[0].split():
             res, msg = mail.fetch(num, "(RFC822)")
             msg = email.message_from_bytes(msg[0][1])
-            
-            # Buscar adjuntos XML
             for part in msg.walk():
                 if part.get_filename() and part.get_filename().endswith('.xml'):
                     xml_data = part.get_payload(decode=True)
@@ -66,6 +62,5 @@ if st.button("📥 Procesar Facturas y Enviar a Hoja de Cálculo"):
         mail.close()
         mail.logout()
         st.success("✅ ¡Procesamiento finalizado! Datos guardados en Google Sheets.")
-        
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error técnico: {e}")
