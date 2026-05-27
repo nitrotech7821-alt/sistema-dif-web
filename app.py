@@ -2,19 +2,19 @@ import streamlit as st
 import imaplib
 import email
 import xml.etree.ElementTree as ET
-from openpyxl import load_workbook
-import io
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURACIÓN ---
+# Asegúrate de tener EMAIL y PASSWORD en tus Secrets de Streamlit
 EMAIL_USER = st.secrets["EMAIL"]
 EMAIL_PASS = st.secrets["PASSWORD"]
 
 # --- FUNCIÓN PARA GUARDAR EN GOOGLE SHEETS ---
 def guardar_en_sheets(datos):
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    # Asegúrate de que el archivo 'credenciales.json' esté en tu GitHub
+    
+    # Esta línea busca el archivo 'credenciales.json' que ya subiste a GitHub
     creds = ServiceAccountCredentials.from_json_keyfile_name('credenciales.json', scope)
     client = gspread.authorize(creds)
     
@@ -22,23 +22,25 @@ def guardar_en_sheets(datos):
     hoja = client.open_by_key('1rwUk0h9Yx8BA8jmVHHHtS6Etj7HqOfHsSzHrpVanqro')
     worksheet = hoja.sheet1
     
-    # Escribir fila
+    # Escribir fila en la hoja
     worksheet.append_row([datos['RFC'], datos['Nombre'], datos['Total']])
 
 # --- PROCESAMIENTO XML ---
 def procesar_xml(xml_content):
     root = ET.fromstring(xml_content)
     ns = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
+    emisor = root.find('.//cfdi:Emisor', ns)
+    comprobante = root.find('.//cfdi:Comprobante', ns)
     return {
-        "RFC": root.find('.//cfdi:Emisor', ns).get('Rfc'),
-        "Nombre": root.find('.//cfdi:Emisor', ns).get('Nombre'),
-        "Total": root.find('.//cfdi:Comprobante', ns).get('Total')
+        "RFC": emisor.get('Rfc') if emisor is not None else "N/A",
+        "Nombre": emisor.get('Nombre') if emisor is not None else "N/A",
+        "Total": comprobante.get('Total') if comprobante is not None else "0"
     }
 
 # --- INTERFAZ ---
 st.title("🏛️ SISTEMA DIF")
 
-if st.button("📥 Procesar Facturas y Enviar a Drive"):
+if st.button("📥 Procesar Facturas y Enviar a Hoja de Cálculo"):
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(EMAIL_USER, EMAIL_PASS)
@@ -52,11 +54,10 @@ if st.button("📥 Procesar Facturas y Enviar a Drive"):
                 if part.get_filename() and part.get_filename().endswith('.xml'):
                     xml_data = part.get_payload(decode=True)
                     datos = procesar_xml(xml_data)
-                    # Guardar en Sheets
                     guardar_en_sheets(datos)
         
         mail.close()
         mail.logout()
-        st.success("¡Información enviada con éxito a tu hoja de cálculo!")
+        st.success("✅ ¡Procesamiento finalizado! Datos guardados en Google Sheets.")
     except Exception as e:
         st.error(f"Error: {e}")
