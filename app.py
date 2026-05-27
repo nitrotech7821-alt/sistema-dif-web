@@ -3,10 +3,9 @@ import imaplib
 import email
 import xml.etree.ElementTree as ET
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURACIÓN ---
-# Asegúrate de tener EMAIL, PASSWORD y el diccionario 'gcp' en tus Secrets
+# Estos datos se leen de la sección "Secrets" de tu app en Streamlit
 EMAIL_USER = st.secrets["EMAIL"]
 EMAIL_PASS = st.secrets["PASSWORD"]
 
@@ -14,15 +13,15 @@ EMAIL_PASS = st.secrets["PASSWORD"]
 def guardar_en_sheets(datos):
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     
-    # Leemos las credenciales directamente del diccionario 'gcp' en Secrets
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp"], scope)
-    client = gspread.authorize(creds)
+    # Usamos gspread.service_account_from_dict para cargar las credenciales desde el secreto "gcp"
+    # Esto evita el uso de archivos físicos y el error de firma JWT
+    client = gspread.service_account_from_dict(dict(st.secrets["gcp"]))
     
     # ID de tu hoja (el código largo de la URL)
     hoja = client.open_by_key('1rwUk0h9Yx8BA8jmVHHHtS6Etj7HqOfHsSzHrpVanqro')
     worksheet = hoja.sheet1
     
-    # Anexar datos a la hoja
+    # Anexar los datos
     worksheet.append_row([datos['RFC'], datos['Nombre'], datos['Total']])
 
 # --- PROCESAMIENTO XML ---
@@ -43,12 +42,10 @@ st.title("🏛️ SISTEMA DIF")
 
 if st.button("📥 Procesar Facturas y Enviar a Hoja de Cálculo"):
     try:
-        # Conexión a Gmail
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(EMAIL_USER, EMAIL_PASS)
         mail.select("inbox")
         
-        # Búsqueda
         status, messages = mail.search(None, 'ALL')
         for num in messages[0].split():
             res, msg = mail.fetch(num, "(RFC822)")
