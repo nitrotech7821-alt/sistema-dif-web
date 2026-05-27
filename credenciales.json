@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "tensile-site-497617-j8",
+  "private_key_id": "2e548e0d9520ea094f923e88994c4534b76be9b1",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCi7AdhcCZ8whpX\nwIfB7tP1bwXmadfkYQZ/lhvdEMbD+hNVBj/FIzBcRAQWj+/p1EYbUpAaWDQ2IJMp\nG4qowqvmcgISAwAhMuFP/lmBijiXFaMOs00Eb2Y43rHiBMFb8pncWmhjpYE+HyiA\n5KDSpsXt/yxK3wVd5FXfXAOXdpkjdmqAJMV+PKuQaRxdogY+J176dxdwrFkylH7A\n7zO3A1JdHL48VE7ZNF6P91Z558C2eNgnfTVJKt/96Jjh07m3vhnfOtSefd26Vgxy\nJQ/dpNvWJBE2ml8ErLRTCverL8H5xaVZE5I9J1qOz+hiaEAoRYL88suXfSnSN8bc\nOr9T0S8lAgMBAAECggEAIDFG0RJVzIuXJHVK7f9o2wOl1Q5fhkVEwTOyTEeLGwDg\nTonmUmgeX3DiJOoqpBfZhX8WMdpxcKuVoIcMakXTLT0kWxZEMYsp+cI+wenDvljc\naCR2SLTRbFXWrNw3L9m7XM7xdxUmOVXzTSq/+3fQPvOPtzijyRZ8AF9gZ06cOmUU\nNtiM70LMhZKgrJMglrza21CbtYYQu9dfDEVWd4ovcn8jaiqsGBxoXfLkxcu1SJ59\n16pRoM9sqVzm9JTiqEZkZdTBhlK7Bjs2ovp2YyE/Cncx6UWJVinbbjJyY5dnBtw/\nmn1Kxr8X2ZY94Aco2ppyii7G6//tcbNpLMOeIhY7UQKBgQDNjEVXpWj9/maqOGql\nIXAJM6NzE0jzjm7jpNK21uSkf/EWnq3PiURTb4Lf6V87Xu0pBYeCK4fZE+fXsocd\nBMR7mRIM6RYUwft5aM9BuzKuP8dLYHHt/3G8knucgU9SZdkVRxcf/GWpYL/4NZdi\n9wdPAaN1Ee/lMit6Ic5b7/n28QKBgQDK6VSvyMoxfVQZw+spqeA1wL+gMOSxt9CQ\nI+rQbi4HopMINu9xlQyQsm1Nb9xknkcSlL+kKH5mrEsq7Y/AeO7hY6+PqGR92szA\nUBw07hnJ603OLLdjEJBaGv6Sv13wr+V05fzqXfAVG3VEuboEx2pBO+mrmc2ME6I5\nJNKfzJaDdQKBgH5PkZkfk5ppyAsYaiiZmLB+5BVmJ3FL+Ma5Vad3/L89xBhjYGnl\nb3BaWTFhxtzEI7cOp8wNFgkG23TIR5FEib1uPhJi9efBoNhl2N8Ku0Uq+jxOwxQ+\n4lTAK2fsaqM25STXL9W/E3X3d2B/Bk2RghNB7YGWiTXuE5uUxKvol1HxAoGAaRLU\nwMZYNbJxp3n1v7hxG0S5tmk7M/A8tzdyNAaqHVgJjXptGcMWI6PRyATB+vSfVzbh\n2k8BzYcw0YT9KK02/k4RrnGDwExaNMgHIz2c6xvHSZmMSWddaNuLslAYhDeBubwS\n8QY9+aAjZLhMZIcjNa6hvTPC5eOQ4Mh5rThTRLUCgYEAx38MM9OtclLPad9aju7A\n/1oUIVSlfbTzz4ziwwKbjgrnUnwggw+zbWlCXXZTIWXs6CgPnE1oXfr6ILinH6pq\nQLNQ9CsAVv1xD5O4FfxJJwr1+/+wktCQpdV+ZH7/u+MQeY+apz8qxuxp+m23r3pu\nfiTW8Ptf/MPQl8fW3F48jBg=\n-----END PRIVATE KEY-----\n",
+  "client_email": "sistema-dif-bot@tensile-site-497617-j8.iam.gserviceaccount.com",
+  "client_id": "105202025188794585900",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/sistema-dif-bot%40tensile-site-497617-j8.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
