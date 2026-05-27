@@ -9,10 +9,8 @@ EMAIL_USER = st.secrets["EMAIL"]
 EMAIL_PASS = st.secrets["PASSWORD"]
 
 def guardar_en_sheets(datos):
-    # Esto usa la configuración de los Secrets directamente
-    # Sin buscar archivos en disco, eliminando los errores de "PEM file"
+    # Esto usa la configuración cargada en memoria, eliminando errores de firma
     client = gspread.service_account_from_dict(dict(st.secrets["gcp"]))
-    
     hoja = client.open_by_key('1rwUk0h9Yx8BA8jmVHHHtS6Etj7HqOfHsSzHrpVanqro')
     worksheet = hoja.sheet1
     worksheet.append_row([datos['RFC'], datos['Nombre'], datos['Total']])
