@@ -9,8 +9,8 @@ import io
 
 # --- CONFIGURACIÓN ---
 # Usamos secretos de Streamlit para seguridad
-EMAIL = st.secrets"difhermosillomunicipal@gmail.com"
-PASSWORD = st.secrets"yigv ufjs ufji czar"
+EMAIL = st.secrets["EMAIL"]
+PASSWORD = st.secrets["PASSWORD"]
 
 # --- FUNCIONES ---
 def limpiar_nombre(nombre):
