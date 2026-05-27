@@ -5,23 +5,15 @@ import xml.etree.ElementTree as ET
 import gspread
 
 # --- CONFIGURACIÓN ---
-# Estos datos se leen de la sección "Secrets" de tu app en Streamlit
 EMAIL_USER = st.secrets["EMAIL"]
 EMAIL_PASS = st.secrets["PASSWORD"]
 
 # --- FUNCIÓN PARA GUARDAR EN GOOGLE SHEETS ---
 def guardar_en_sheets(datos):
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    
-    # Usamos gspread.service_account_from_dict para cargar las credenciales desde el secreto "gcp"
-    # Esto evita el uso de archivos físicos y el error de firma JWT
+    # Esto carga la configuración directamente del diccionario en los Secrets
     client = gspread.service_account_from_dict(dict(st.secrets["gcp"]))
-    
-    # ID de tu hoja (el código largo de la URL)
     hoja = client.open_by_key('1rwUk0h9Yx8BA8jmVHHHtS6Etj7HqOfHsSzHrpVanqro')
     worksheet = hoja.sheet1
-    
-    # Anexar los datos
     worksheet.append_row([datos['RFC'], datos['Nombre'], datos['Total']])
 
 # --- PROCESAMIENTO XML ---
@@ -58,6 +50,6 @@ if st.button("📥 Procesar Facturas y Enviar a Hoja de Cálculo"):
         
         mail.close()
         mail.logout()
-        st.success("✅ ¡Procesamiento finalizado! Datos guardados en Google Sheets.")
+        st.success("✅ ¡Procesamiento finalizado!")
     except Exception as e:
         st.error(f"Error técnico: {e}")
