@@ -19,55 +19,56 @@ def extraer_datos_xml(xml_bytes):
     except:
         return {"nombre": "N/A", "total": "0", "folio": "N/A"}
 
-def procesar():
-    # 1. Conexión
-    mail = imaplib.IMAP4_SSL("imap.gmail.com")
-    mail.login(st.secrets["EMAIL_USER"], st.secrets["EMAIL_PASS"])
-    mail.select("inbox")
-    
-    _, mensajes = mail.search(None, '(FROM "facturacion")') 
-    ids = mensajes[0].split()[-1:] # Tomamos solo la última factura para probar
-    
-    for num in ids:
-        _, data = mail.fetch(num, "(RFC822)")
-        msg = email.message_from_bytes(data[0][1])
+# --- Lógica de procesamiento ---
+if st.button("Buscar y Generar Expedientes"):
+    try:
+        # 1. Conexión
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(st.secrets["EMAIL_USER"], st.secrets["EMAIL_PASS"])
+        mail.select("inbox")
         
-        for part in msg.walk():
-            if part.get_filename() and part.get_filename().endswith(".xml"):
-                xml_data = part.get_payload(decode=True)
-                datos = extraer_datos_xml(xml_data)
-                
-                # 2. Llenar Excel con las celdas correctas según tus archivos
-                wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
-                ws_cot = wb_cot.active
-                ws_cot['H2'] = datos['folio'] # Ajuste basado en tu archivo
-                
-                wb_req = openpyxl.load_workbook("requisicion.xlsx")
-                ws_req = wb_req.active
-                ws_req['I9'] = datos['folio'] # Ajuste basado en tu archivo
-                
-                # 3. Guardar en memoria
-                buf_cot = io.BytesIO()
-                wb_cot.save(buf_cot)
-                
-                buf_req = io.BytesIO()
-                wb_req.save(buf_req)
-                
-                # 4. Crear ZIP
-                zip_buf = io.BytesIO()
-                with zipfile.ZipFile(zip_buf, 'w') as zf:
-                    zf.writestr(f"Factura_{datos['folio']}.xml", xml_data)
-                    zf.writestr(f"Cotizacion_{datos['folio']}.xlsx", buf_cot.getvalue())
-                    zf.writestr(f"Requisicion_{datos['folio']}.xlsx", buf_req.getvalue())
-                
-                # 5. Botón de descarga
-                st.download_button(
-                    label=f"📥 DESCARGAR: Factura {datos['folio']}",
-                    data=zip_buf.getvalue(),
-                    file_name=f"Expediente_{datos['folio']}.zip",
-                    mime="application/zip"
-                )
-    mail.logout()
-
-if st.button("Buscar Facturas y Preparar Descarga"):
-    procesar()
+        # 2. Búsqueda
+        _, mensajes = mail.search(None, '(FROM "facturacion")') 
+        ids = mensajes[0].split()[-1:] # Última factura
+        
+        for num in ids:
+            _, data = mail.fetch(num, "(RFC822)")
+            msg = email.message_from_bytes(data[0][1])
+            
+            for part in msg.walk():
+                if part.get_filename() and part.get_filename().endswith(".xml"):
+                    xml_data = part.get_payload(decode=True)
+                    datos = extraer_datos_xml(xml_data)
+                    
+                    # 3. Cargar y Llenar
+                    wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
+                    ws_cot = wb_cot.active
+                    ws_cot['H2'] = datos['folio'] # Ajustado a tu formato
+                    
+                    wb_req = openpyxl.load_workbook("requisicion.xlsx")
+                    ws_req = wb_req.active
+                    ws_req['I9'] = datos['folio'] # Ajustado a tu formato
+                    
+                    # 4. Guardar en buffers
+                    buf_cot = io.BytesIO()
+                    wb_cot.save(buf_cot)
+                    buf_req = io.BytesIO()
+                    wb_req.save(buf_req)
+                    
+                    # 5. Crear ZIP en memoria
+                    zip_buf = io.BytesIO()
+                    with zipfile.ZipFile(zip_buf, 'w') as zf:
+                        zf.writestr(f"Factura_{datos['folio']}.xml", xml_data)
+                        zf.writestr(f"Cotizacion_{datos['folio']}.xlsx", buf_cot.getvalue())
+                        zf.writestr(f"Requisicion_{datos['folio']}.xlsx", buf_req.getvalue())
+                    
+                    # 6. Botón de descarga
+                    st.download_button(
+                        label=f"📥 DESCARGAR EXPEDIENTE: {datos['folio']}",
+                        data=zip_buf.getvalue(),
+                        file_name=f"Expediente_{datos['folio']}.zip",
+                        mime="application/zip"
+                    )
+        mail.logout()
+    except Exception as e:
+        st.error(f"Error técnico: {e}")
