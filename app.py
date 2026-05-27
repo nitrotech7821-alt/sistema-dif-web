@@ -6,9 +6,8 @@ import io
 import zipfile
 import xml.etree.ElementTree as ET
 
-st.title("🤖 Robot Administrativo DIF")
+st.title("🤖 Robot Administrativo DIF - Procesador Total")
 
-# Función para manejar celdas combinadas
 def escribir_en_celda(ws, celda, valor):
     for range_ in ws.merged_cells.ranges:
         if celda in range_:
@@ -16,63 +15,58 @@ def escribir_en_celda(ws, celda, valor):
             break
     ws[celda] = valor
 
-def extraer_datos_xml(xml_bytes):
+if st.button("🚀 BUSCAR Y PROCESAR TODA LA BANDEJA"):
     try:
-        root = ET.fromstring(xml_bytes)
-        # Ajusta el namespace según tu XML (usualmente cfdi:v4.0)
-        ns = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
-        folio = root.find('.//cfdi:Comprobante', ns).get('Folio', 'SN')
-        return folio
-    except:
-        return "ERROR_FOLIO"
-
-if st.button("🚀 PROCESAR FACTURAS DEL CORREO"):
-    try:
-        # 1. Conexión
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(st.secrets["EMAIL_USER"], st.secrets["EMAIL_PASS"])
         mail.select("inbox")
         
-        # 2. Buscar correos
-        _, mensajes = mail.search(None, 'UNSEEN') # Busca correos no leídos
+        # Buscamos TODOS los correos
+        _, mensajes = mail.search(None, 'ALL')
+        ids = mensajes[0].split()[-10:] # Tomamos los últimos 10 para no colapsar la app
         
-        for num in mensajes[0].split():
+        for num in ids:
             _, data = mail.fetch(num, "(RFC822)")
             msg = email.message_from_bytes(data[0][1])
             
             for part in msg.walk():
                 if part.get_filename() and part.get_filename().endswith(".xml"):
+                    # Extraer datos
                     xml_data = part.get_payload(decode=True)
-                    folio = extraer_datos_xml(xml_data)
+                    try:
+                        root = ET.fromstring(xml_data)
+                        ns = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
+                        folio = root.find('.//cfdi:Comprobante', ns).get('Folio', 'SIN_FOLIO')
+                    except:
+                        folio = "ERROR_XML"
                     
-                    # 3. Procesar archivos
+                    # Procesar Excel
                     wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
                     escribir_en_celda(wb_cot.active, 'H2', folio)
                     
                     wb_req = openpyxl.load_workbook("requisicion.xlsx")
                     escribir_en_celda(wb_req.active, 'I7', folio)
                     
-                    # 4. Crear ZIP en memoria
+                    buf_cot = io.BytesIO()
+                    wb_cot.save(buf_cot)
+                    buf_req = io.BytesIO()
+                    wb_req.save(buf_req)
+                    
+                    # Empaquetar
                     zip_buf = io.BytesIO()
                     with zipfile.ZipFile(zip_buf, 'w') as zf:
                         zf.writestr(f"Factura_{folio}.xml", xml_data)
-                        
-                        buf_cot = io.BytesIO()
-                        wb_cot.save(buf_cot)
                         zf.writestr(f"Cotizacion_{folio}.xlsx", buf_cot.getvalue())
-                        
-                        buf_req = io.BytesIO()
-                        wb_req.save(buf_req)
                         zf.writestr(f"Requisicion_{folio}.xlsx", buf_req.getvalue())
                     
-                    # 5. Botón de descarga individual
+                    # Mostrar botón
                     st.download_button(
-                        label=f"📥 Descargar Expediente: {folio}",
+                        label=f"📥 Descargar: Factura {folio}",
                         data=zip_buf.getvalue(),
                         file_name=f"Expediente_{folio}.zip",
                         mime="application/zip"
                     )
         mail.logout()
-        st.success("Proceso terminado. Revisa los botones de descarga arriba.")
+        st.success("Búsqueda finalizada.")
     except Exception as e:
-        st.error(f"Error al conectar con correo: {e}")
+        st.error(f"Error crítico: {e}")
