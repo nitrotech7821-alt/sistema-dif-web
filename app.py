@@ -6,47 +6,48 @@ import os
 
 st.title("🤖 Generador de Expedientes DIF")
 
-# Datos de prueba (estos se obtendrán del XML después)
-datos_prueba = {"folio": "1721"}
+def escribir_en_celda(ws, celda, valor):
+    """Escribe en una celda, manejando celdas combinadas"""
+    # Si la celda es parte de un rango combinado, obtenemos la celda principal
+    for range_ in ws.merged_cells.ranges:
+        if celda in range_:
+            ws.unmerge_cells(str(range_)) # Descombinamos temporalmente
+            break
+    ws[celda] = valor
 
 if st.button("GENERAR Y DESCARGAR"):
-    # 1. Validación de existencia de archivos
-    archivos_faltantes = []
-    if not os.path.exists("cotizacion.xlsx"): archivos_faltantes.append("cotizacion.xlsx")
-    if not os.path.exists("requisicion.xlsx"): archivos_faltantes.append("requisicion.xlsx")
-    
-    if archivos_faltantes:
-        st.error(f"¡Error! No encuentro estos archivos en la carpeta del proyecto: {', '.join(archivos_faltantes)}")
-    else:
-        try:
-            # 2. Procesamiento
-            wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
-            ws_cot = wb_cot.active
-            ws_cot['H2'] = datos_prueba['folio'] # Celda H2 para Cotización
+    try:
+        # 1. Cargar archivos
+        wb_cot = openpyxl.load_workbook("cotizacion.xlsx")
+        ws_cot = wb_cot.active
+        
+        wb_req = openpyxl.load_workbook("requisicion.xlsx")
+        ws_req = wb_req.active
+        
+        # 2. Escribir usando la función que maneja celdas combinadas
+        escribir_en_celda(ws_cot, 'H2', "1721")
+        escribir_en_celda(ws_req, 'I7', "1721")
+        
+        # 3. Guardar en memoria
+        buf_cot = io.BytesIO()
+        wb_cot.save(buf_cot)
+        buf_req = io.BytesIO()
+        wb_req.save(buf_req)
+        
+        # 4. Empaquetar
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, 'w') as zf:
+            zf.writestr("Cotizacion_Llenada.xlsx", buf_cot.getvalue())
+            zf.writestr("Requisicion_Llenada.xlsx", buf_req.getvalue())
+        
+        # 5. Descarga
+        st.download_button(
+            label="📥 DESCARGAR EXPEDIENTE ZIP",
+            data=zip_buf.getvalue(),
+            file_name="Expediente_Generado.zip",
+            mime="application/zip"
+        )
+        st.success("¡Éxito! Archivos generados correctamente.")
             
-            wb_req = openpyxl.load_workbook("requisicion.xlsx")
-            ws_req = wb_req.active
-            ws_req['I7'] = datos_prueba['folio'] # Celda I7 para Requisición
-            
-            buf_cot = io.BytesIO()
-            wb_cot.save(buf_cot)
-            buf_req = io.BytesIO()
-            wb_req.save(buf_req)
-            
-            # 3. Empaquetado
-            zip_buf = io.BytesIO()
-            with zipfile.ZipFile(zip_buf, 'w') as zf:
-                zf.writestr("Cotizacion_Llenada.xlsx", buf_cot.getvalue())
-                zf.writestr("Requisicion_Llenada.xlsx", buf_req.getvalue())
-            
-            # 4. Descarga
-            st.download_button(
-                label="📥 DESCARGAR EXPEDIENTE ZIP",
-                data=zip_buf.getvalue(),
-                file_name="Expediente_Generado.zip",
-                mime="application/zip"
-            )
-            st.success("¡Expediente generado con éxito!")
-            
-        except Exception as e:
-            st.error(f"Ocurrió un error al procesar el Excel: {e}")
+    except Exception as e:
+        st.error(f"Error técnico: {e}")
