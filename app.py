@@ -6,7 +6,7 @@ import shutil
 import zipfile
 import imaplib
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.header import decode_header
 
 import streamlit as st
@@ -80,6 +80,14 @@ def decodificar(texto):
 
     return resultado
 
+def fecha_dos_dias_antes(fecha_xml):
+    try:
+        fecha_limpia = fecha_xml.split("T")[0]
+        fecha_factura = datetime.strptime(fecha_limpia, "%Y-%m-%d")
+        return fecha_factura - timedelta(days=2)
+    except:
+        return datetime.now() - timedelta(days=2)
+
 # =====================================================
 # LEER XML CFDI
 # =====================================================
@@ -134,12 +142,13 @@ def llenar_requisicion(datos, folio, carpeta_salida):
     wb = load_workbook(TEMPLATE_REQUISICION)
     ws = wb.active
 
-    fecha = datetime.now()
+    # FECHA DE REQUISICIÓN = 2 DÍAS ANTES DE LA FACTURA
+    fecha_req = fecha_dos_dias_antes(datos["fecha"])
 
     escribir(ws, "J6", folio)
-    escribir(ws, "J10", fecha.day)
-    escribir(ws, "K10", fecha.month)
-    escribir(ws, "M10", fecha.year)
+    escribir(ws, "J10", fecha_req.day)
+    escribir(ws, "K10", fecha_req.month)
+    escribir(ws, "M10", fecha_req.year)
 
     escribir(ws, "D9", "ADMINISTRATIVA")
     escribir(ws, "D10", "GENERALES")
@@ -285,6 +294,7 @@ def descargar_facturas_calote():
                 resultados.append({
                     "folio": folio,
                     "factura": datos["folio_factura"],
+                    "fecha_factura": datos["fecha"],
                     "proveedor": datos["proveedor"],
                     "total": datos["total"],
                     "requisicion": req,
@@ -303,7 +313,7 @@ def descargar_facturas_calote():
     return resultados
 
 # =====================================================
-# CREAR ZIP
+# ZIP
 # =====================================================
 def crear_zip_expediente(r):
     zip_buffer = io.BytesIO()
@@ -328,8 +338,8 @@ st.title("📥 Sistema de Facturas CALOTE")
 st.header("Requisición y Cotización")
 
 st.write(
-    "Este sistema descarga facturas de CALOTE y genera requisición, "
-    "cotización, XML y PDF en un solo archivo ZIP."
+    "Este sistema descarga facturas de CALOTE y genera requisición "
+    "con fecha 2 días antes de la factura."
 )
 
 if st.button("Descargar y generar documentos"):
@@ -352,6 +362,7 @@ if st.button("Descargar y generar documentos"):
 
             st.subheader(f"Folio generado: {r['folio']}")
             st.write(f"Factura: {r['factura']}")
+            st.write(f"Fecha factura: {r['fecha_factura']}")
             st.write(f"Proveedor: {r['proveedor']}")
             st.write(f"Total: ${r['total']:,.2f}")
 
