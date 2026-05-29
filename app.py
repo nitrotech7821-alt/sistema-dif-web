@@ -6,7 +6,7 @@ import shutil
 import zipfile
 import imaplib
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.header import decode_header
 
 import streamlit as st
@@ -32,6 +32,106 @@ RFC_CALOTE = "AALK801205TH8"
 os.makedirs(CARPETA_FACTURAS, exist_ok=True)
 os.makedirs(CARPETA_GENERADOS, exist_ok=True)
 os.makedirs(CARPETA_BASE, exist_ok=True)
+
+# =====================================================
+# DISEÑO STREAMLIT
+# =====================================================
+st.set_page_config(
+    page_title="Facturas CALOTE - DIF Hermosillo",
+    page_icon="📄",
+    layout="centered"
+)
+
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(180deg, #f7f9fb 0%, #eef3f5 100%);
+}
+
+.block-container {
+    padding-top: 25px;
+}
+
+.header-card {
+    background: white;
+    padding: 28px;
+    border-radius: 20px;
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.10);
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.header-title {
+    color: #187C7A;
+    font-size: 32px;
+    font-weight: 800;
+    margin-top: 10px;
+}
+
+.header-subtitle {
+    color: #555;
+    font-size: 17px;
+}
+
+.info-card {
+    background: white;
+    padding: 22px;
+    border-radius: 16px;
+    box-shadow: 0px 4px 14px rgba(0,0,0,0.08);
+    margin-bottom: 22px;
+    border-left: 7px solid #E87522;
+}
+
+.result-card {
+    background: white;
+    padding: 22px;
+    border-radius: 16px;
+    box-shadow: 0px 4px 14px rgba(0,0,0,0.08);
+    margin-top: 18px;
+    margin-bottom: 12px;
+    border-left: 7px solid #187C7A;
+}
+
+.stButton > button {
+    background: linear-gradient(90deg, #E94E1B, #F2B233);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 20px;
+    font-size: 18px;
+    font-weight: 800;
+    width: 100%;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.18);
+}
+
+.stButton > button:hover {
+    background: linear-gradient(90deg, #D94316, #E6A222);
+    transform: scale(1.01);
+}
+
+.stDownloadButton > button {
+    background: #187C7A;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    width: 100%;
+}
+
+.stDownloadButton > button:hover {
+    background: #0F6664;
+}
+
+.footer {
+    text-align: center;
+    color: #777;
+    font-size: 13px;
+    margin-top: 35px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # =====================================================
 # FUNCIONES
@@ -79,14 +179,6 @@ def decodificar(texto):
             resultado += parte
 
     return resultado
-
-def fecha_dos_dias_antes(fecha_xml):
-    try:
-        fecha_limpia = fecha_xml.split("T")[0]
-        fecha_factura = datetime.strptime(fecha_limpia, "%Y-%m-%d")
-        return fecha_factura - timedelta(days=2)
-    except:
-        return datetime.now() - timedelta(days=2)
 
 # =====================================================
 # LEER XML CFDI
@@ -142,13 +234,12 @@ def llenar_requisicion(datos, folio, carpeta_salida):
     wb = load_workbook(TEMPLATE_REQUISICION)
     ws = wb.active
 
-    # FECHA DE REQUISICIÓN = 2 DÍAS ANTES DE LA FACTURA
-    fecha_req = fecha_dos_dias_antes(datos["fecha"])
+    fecha = datetime.now()
 
     escribir(ws, "J6", folio)
-    escribir(ws, "J10", fecha_req.day)
-    escribir(ws, "K10", fecha_req.month)
-    escribir(ws, "M10", fecha_req.year)
+    escribir(ws, "J10", fecha.day)
+    escribir(ws, "K10", fecha.month)
+    escribir(ws, "M10", fecha.year)
 
     escribir(ws, "D9", "ADMINISTRATIVA")
     escribir(ws, "D10", "GENERALES")
@@ -294,7 +385,6 @@ def descargar_facturas_calote():
                 resultados.append({
                     "folio": folio,
                     "factura": datos["folio_factura"],
-                    "fecha_factura": datos["fecha"],
                     "proveedor": datos["proveedor"],
                     "total": datos["total"],
                     "requisicion": req,
@@ -313,7 +403,7 @@ def descargar_facturas_calote():
     return resultados
 
 # =====================================================
-# ZIP
+# CREAR ZIP
 # =====================================================
 def crear_zip_expediente(r):
     zip_buffer = io.BytesIO()
@@ -330,20 +420,35 @@ def crear_zip_expediente(r):
     return zip_buffer
 
 # =====================================================
-# STREAMLIT
+# PANTALLA PRINCIPAL
 # =====================================================
-st.set_page_config(page_title="Facturas CALOTE", layout="centered")
+st.markdown('<div class="header-card">', unsafe_allow_html=True)
 
-st.title("📥 Sistema de Facturas CALOTE")
-st.header("Requisición y Cotización")
+if os.path.exists("logo_dif.jpeg"):
+    st.image("logo_dif.jpeg", width=260)
+else:
+    st.warning("No se encontró el logo. Guarda la imagen como logo_dif.jpeg")
 
-st.write(
-    "Este sistema descarga facturas de CALOTE y genera requisición "
-    "con fecha 2 días antes de la factura."
-)
+st.markdown("""
+<div class="header-title">Sistema de Facturas CALOTE</div>
+<div class="header-subtitle">
+DIF Hermosillo | Generación automática de requisiciones y cotizaciones
+</div>
+""", unsafe_allow_html=True)
 
-if st.button("Descargar y generar documentos"):
-    with st.spinner("Procesando correos..."):
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div class="info-card">
+<b>📌 Función del sistema</b><br><br>
+Este sistema descarga facturas de CALOTE desde el correo institucional,
+lee el XML, genera automáticamente la requisición, cotización, XML y PDF,
+y entrega todo en un expediente ZIP.
+</div>
+""", unsafe_allow_html=True)
+
+if st.button("📥 Descargar facturas y generar documentos"):
+    with st.spinner("Procesando correos y generando documentos..."):
         try:
             resultados = descargar_facturas_calote()
         except Exception as e:
@@ -353,18 +458,21 @@ if st.button("Descargar y generar documentos"):
     if not resultados:
         st.warning("No se encontraron facturas válidas.")
     else:
-        st.success("Proceso terminado.")
+        st.success("Proceso terminado correctamente.")
 
         for r in resultados:
             if "error" in r:
                 st.error(f"Error XML: {r['xml']} - {r['error']}")
                 continue
 
-            st.subheader(f"Folio generado: {r['folio']}")
-            st.write(f"Factura: {r['factura']}")
-            st.write(f"Fecha factura: {r['fecha_factura']}")
-            st.write(f"Proveedor: {r['proveedor']}")
-            st.write(f"Total: ${r['total']:,.2f}")
+            st.markdown(f"""
+            <div class="result-card">
+                <h3 style="color:#187C7A;">📄 Folio generado: {r['folio']}</h3>
+                <p><b>Factura:</b> {r['factura']}</p>
+                <p><b>Proveedor:</b> {r['proveedor']}</p>
+                <p><b>Total:</b> ${r['total']:,.2f}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
             zip_buffer = crear_zip_expediente(r)
 
@@ -376,4 +484,8 @@ if st.button("Descargar y generar documentos"):
                 key=f"zip_{r['folio']}"
             )
 
-            st.divider()
+st.markdown("""
+<div class="footer">
+Sistema interno DIF Hermosillo · Facturas CALOTE
+</div>
+""", unsafe_allow_html=True)
