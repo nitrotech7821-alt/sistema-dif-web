@@ -5,6 +5,7 @@ import email
 import shutil
 import zipfile
 import imaplib
+import unicodedata
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.header import decode_header
@@ -45,63 +46,79 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(180deg, #f7f9fb 0%, #eef3f5 100%);
+    background:
+        radial-gradient(circle at top left, rgba(8,123,117,0.30), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(233,78,27,0.42), transparent 34%),
+        linear-gradient(135deg, #EEF8F5 0%, #FFF7E7 50%, #F8C2A5 100%);
 }
 
 .block-container {
     padding-top: 25px;
+    max-width: 980px;
 }
 
-.header-card {
-    background: white;
-    padding: 28px;
-    border-radius: 20px;
-    box-shadow: 0px 6px 18px rgba(0,0,0,0.10);
+.logo-card {
+    background: linear-gradient(135deg, rgba(216,245,240,0.95), rgba(255,235,205,0.95));
+    padding: 28px 70px;
+    border-radius: 22px;
+    box-shadow: 0px 8px 24px rgba(0,0,0,0.14);
+    border: 1px solid rgba(255,255,255,0.9);
     text-align: center;
-    margin-bottom: 25px;
+    margin: 0 auto 35px auto;
+    width: fit-content;
 }
 
 .header-title {
-    color: #187C7A;
-    font-size: 32px;
-    font-weight: 800;
+    color: #087B75;
+    font-size: 38px;
+    font-weight: 900;
     margin-top: 10px;
 }
 
 .header-subtitle {
-    color: #555;
-    font-size: 17px;
+    color: #374151;
+    font-size: 18px;
+    margin-top: 6px;
 }
 
 .info-card {
-    background: white;
-    padding: 22px;
-    border-radius: 16px;
-    box-shadow: 0px 4px 14px rgba(0,0,0,0.08);
-    margin-bottom: 22px;
-    border-left: 7px solid #E87522;
+    background: linear-gradient(135deg, rgba(219,246,241,0.95), rgba(255,242,216,0.95));
+    padding: 28px;
+    border-radius: 20px;
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.12);
+    margin-bottom: 26px;
+    border-left: 8px solid #087B75;
+    color: #123D3B;
+    font-size: 17px;
+}
+
+.info-title {
+    font-size: 22px;
+    font-weight: 900;
+    color: #087B75;
+    margin-bottom: 12px;
 }
 
 .result-card {
-    background: white;
+    background: linear-gradient(135deg, #E4F7F3, #FFF7EA);
     padding: 22px;
-    border-radius: 16px;
-    box-shadow: 0px 4px 14px rgba(0,0,0,0.08);
+    border-radius: 18px;
+    box-shadow: 0px 5px 15px rgba(0,0,0,0.10);
     margin-top: 18px;
     margin-bottom: 12px;
-    border-left: 7px solid #187C7A;
+    border-left: 7px solid #E87522;
 }
 
 .stButton > button {
     background: linear-gradient(90deg, #E94E1B, #F2B233);
     color: white;
     border: none;
-    border-radius: 14px;
-    padding: 14px 20px;
+    border-radius: 16px;
+    padding: 15px 22px;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 900;
     width: 100%;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.18);
+    box-shadow: 0px 6px 16px rgba(0,0,0,0.22);
 }
 
 .stButton > button:hover {
@@ -110,25 +127,22 @@ st.markdown("""
 }
 
 .stDownloadButton > button {
-    background: #187C7A;
+    background: linear-gradient(90deg, #087B75, #14A39A);
     color: white;
     border: none;
-    border-radius: 12px;
-    padding: 12px 18px;
+    border-radius: 14px;
+    padding: 13px 18px;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 800;
     width: 100%;
-}
-
-.stDownloadButton > button:hover {
-    background: #0F6664;
 }
 
 .footer {
     text-align: center;
-    color: #777;
-    font-size: 13px;
+    color: #087B75;
+    font-size: 14px;
     margin-top: 35px;
+    font-weight: 700;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -137,13 +151,25 @@ st.markdown("""
 # FUNCIONES
 # =====================================================
 def limpiar_nombre(nombre):
-    return re.sub(r'[\\/*?:"<>|]', "_", nombre)
+    if not nombre:
+        return "sin_nombre"
+
+    nombre = str(nombre)
+    nombre = nombre.replace("Ñ", "N").replace("ñ", "n")
+    nombre = unicodedata.normalize("NFKD", nombre)
+    nombre = "".join(c for c in nombre if not unicodedata.combining(c))
+    nombre = re.sub(r'[\\/*?:"<>|]', "_", nombre)
+    nombre = nombre.encode("ascii", "ignore").decode("ascii")
+
+    return nombre.strip() or "sin_nombre"
+
 
 def money(valor):
     try:
         return float(valor)
     except:
         return 0.0
+
 
 def escribir(ws, celda, valor):
     for rango in ws.merged_cells.ranges:
@@ -152,33 +178,51 @@ def escribir(ws, celda, valor):
             return
     ws[celda] = valor
 
+
+def limpiar_luis_carlos(ws):
+    for row in ws.iter_rows():
+        for cell in row:
+            if isinstance(cell.value, str):
+                if "LUIS CARLOS RUIZ" in cell.value.upper():
+                    cell.value = ""
+
+
 def obtener_folio():
     if not os.path.exists(ARCHIVO_FOLIO):
-        with open(ARCHIVO_FOLIO, "w") as f:
+        with open(ARCHIVO_FOLIO, "w", encoding="utf-8") as f:
             f.write("1721")
 
-    with open(ARCHIVO_FOLIO, "r") as f:
+    with open(ARCHIVO_FOLIO, "r", encoding="utf-8") as f:
         folio = int(f.read().strip())
 
-    with open(ARCHIVO_FOLIO, "w") as f:
+    with open(ARCHIVO_FOLIO, "w", encoding="utf-8") as f:
         f.write(str(folio + 1))
 
     return folio
+
 
 def decodificar(texto):
     if not texto:
         return ""
 
-    partes = decode_header(texto)
-    resultado = ""
+    try:
+        partes = decode_header(texto)
+        resultado = ""
 
-    for parte, codificacion in partes:
-        if isinstance(parte, bytes):
-            resultado += parte.decode(codificacion or "utf-8", errors="ignore")
-        else:
-            resultado += parte
+        for parte, codificacion in partes:
+            if isinstance(parte, bytes):
+                try:
+                    resultado += parte.decode(codificacion or "utf-8", errors="ignore")
+                except:
+                    resultado += parte.decode("latin-1", errors="ignore")
+            else:
+                resultado += str(parte)
 
-    return resultado
+        return resultado
+
+    except:
+        return str(texto)
+
 
 # =====================================================
 # LEER XML CFDI
@@ -227,6 +271,7 @@ def leer_xml_cfdi(ruta_xml):
 
     return datos
 
+
 # =====================================================
 # REQUISICIÓN
 # =====================================================
@@ -260,9 +305,12 @@ def llenar_requisicion(datos, folio, carpeta_salida):
         f"COMPRA SEGÚN FACTURA {datos['folio_factura']} DE {datos['proveedor']} TOTAL ${datos['total']:,.2f}"
     )
 
+    limpiar_luis_carlos(ws)
+
     salida = os.path.join(carpeta_salida, f"REQUISICION_{folio}.xlsx")
     wb.save(salida)
     return salida
+
 
 # =====================================================
 # COTIZACIÓN
@@ -298,6 +346,7 @@ def llenar_cotizacion(datos, folio, carpeta_salida):
     wb.save(salida)
     return salida
 
+
 # =====================================================
 # DESCARGAR FACTURAS
 # =====================================================
@@ -306,7 +355,7 @@ def descargar_facturas_calote():
     mail.login(EMAIL_USER, EMAIL_PASS)
     mail.select("inbox")
 
-    status, data = mail.search(None, '(OR TEXT "CALOTE" TEXT "KARLA GUADALUPE AMAYA")')
+    status, data = mail.search(None, 'TEXT "CALOTE"')
 
     if status != "OK":
         mail.logout()
@@ -322,7 +371,12 @@ def descargar_facturas_calote():
             continue
 
         msg = email.message_from_bytes(msg_data[0][1])
-        asunto = decodificar(msg.get("Subject"))
+
+        try:
+            asunto = limpiar_nombre(decodificar(msg.get("Subject")))
+        except:
+            asunto = "correo"
+
         fecha_correo = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         carpeta_correo = os.path.join(
@@ -365,7 +419,7 @@ def descargar_facturas_calote():
 
                 carpeta_salida = os.path.join(
                     CARPETA_GENERADOS,
-                    f"FOLIO_{folio}_{datos['folio_factura']}"
+                    limpiar_nombre(f"FOLIO_{folio}_{datos['folio_factura']}")
                 )
 
                 os.makedirs(carpeta_salida, exist_ok=True)
@@ -402,6 +456,7 @@ def descargar_facturas_calote():
     mail.logout()
     return resultados
 
+
 # =====================================================
 # CREAR ZIP
 # =====================================================
@@ -419,31 +474,32 @@ def crear_zip_expediente(r):
     zip_buffer.seek(0)
     return zip_buffer
 
+
 # =====================================================
 # PANTALLA PRINCIPAL
 # =====================================================
-st.markdown('<div class="header-card">', unsafe_allow_html=True)
+st.markdown('<div class="logo-card">', unsafe_allow_html=True)
 
 if os.path.exists("logo_dif.jpeg"):
-    st.image("logo_dif.jpeg", width=260)
+    st.image("logo_dif.jpeg", width=280)
 else:
     st.warning("No se encontró el logo. Guarda la imagen como logo_dif.jpeg")
 
+st.markdown('</div>', unsafe_allow_html=True)
+
 st.markdown("""
-<div class="header-title">Sistema de Facturas CALOTE</div>
+<div class="header-title">Sistema de Facturas</div>
 <div class="header-subtitle">
 DIF Hermosillo | Generación automática de requisiciones y cotizaciones
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown("""
 <div class="info-card">
-<b>📌 Función del sistema</b><br><br>
-Este sistema descarga facturas de CALOTE desde el correo institucional,
-lee el XML, genera automáticamente la requisición, cotización, XML y PDF,
-y entrega todo en un expediente ZIP.
+    <div class="info-title">ℹ️ Función del sistema</div>
+    Este sistema descarga facturas desde el correo institucional,
+    lee el XML, genera automáticamente la requisición, cotización, XML y PDF,
+    y entrega todo en un expediente ZIP.
 </div>
 """, unsafe_allow_html=True)
 
@@ -467,7 +523,7 @@ if st.button("📥 Descargar facturas y generar documentos"):
 
             st.markdown(f"""
             <div class="result-card">
-                <h3 style="color:#187C7A;">📄 Folio generado: {r['folio']}</h3>
+                <h3 style="color:#087B75;">📄 Folio generado: {r['folio']}</h3>
                 <p><b>Factura:</b> {r['factura']}</p>
                 <p><b>Proveedor:</b> {r['proveedor']}</p>
                 <p><b>Total:</b> ${r['total']:,.2f}</p>
